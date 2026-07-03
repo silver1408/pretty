@@ -343,7 +343,7 @@
       transform: translate(-50%, -50%);
       transition: all 2s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
-      box-shadow: 0 0 0 rgba(0,0,0,0);
+      box-shadow: 0 0 0 rgba(0, 0, 0, 0);
       border: 0 solid transparent;
       border-radius: 0;
       z-index: 1;
@@ -359,8 +359,15 @@
     }
 
     @keyframes frame-glow {
-      0%, 100% { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(201, 168, 76, 0.25); }
-      50% { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 50px rgba(201, 168, 76, 0.65); }
+
+      0%,
+      100% {
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(201, 168, 76, 0.25);
+      }
+
+      50% {
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 50px rgba(201, 168, 76, 0.65);
+      }
     }
 
     #video-frame-wrapper.framed.pulse-glow {
@@ -428,6 +435,87 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       text-shadow: 0 0 15px rgba(201, 168, 76, 0.5);
+    }
+
+    @keyframes text-sweep-glow {
+      0% {
+        background-position: 200% center;
+        text-shadow: 0 0 0px transparent;
+      }
+      50% {
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 10px rgba(201, 168, 76, 0.8);
+      }
+      100% {
+        background-position: -200% center;
+        text-shadow: 0 0 0px transparent;
+      }
+    }
+
+    .glow-rtl {
+      background: linear-gradient(to left, var(--gold-light) 20%, #ffffff 50%, var(--gold-light) 80%);
+      background-size: 200% auto;
+      color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: text-sweep-glow 1.5s ease-in-out forwards;
+    }
+
+    .glow-persist {
+      color: #ffffff !important;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 40px rgba(201, 168, 76, 1) !important;
+      transition: all 1s ease;
+    }
+
+    #final-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      text-align: center;
+      z-index: 20;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .final-p1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.5rem, 10vw, 4.5rem);
+      color: var(--gold-light);
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-shadow: 0 0 35px rgba(201, 168, 76, 0.8), 0 5px 15px rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      transform: translateY(25px) scale(0.95);
+      filter: blur(12px);
+      transition: all 2.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .final-p2 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.8rem, 3vw, 1.1rem);
+      letter-spacing: 0.15em;
+      color: var(--cream);
+      opacity: 0;
+      transform: translateY(15px);
+      filter: blur(5px);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+      transition: all 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) 1.2s;
+    }
+
+    #final-message.show .final-p1 {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+
+    #final-message.show .final-p2 {
+      opacity: 0.7;
+      transform: translateY(0);
+      filter: blur(0);
     }
 
     /* Scanning scan lines */
@@ -619,6 +707,13 @@
     #cam-phase.simulated {
       background: radial-gradient(circle at center, #121224 0%, #04040a 100%);
     }
+
+    #video-frame-wrapper.turn-off {
+      transform: translate(-50%, -50%) scale(0.85);
+      opacity: 0;
+      filter: blur(15px);
+      transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 
@@ -688,6 +783,10 @@
       <div id="line-2" class="type-line dialogue-reply"></div>
       <div id="line-3" class="type-line highlight"></div>
     </div>
+    <div id="final-message">
+      <div class="final-p1">Ho gaya !</div>
+      <div class="final-p2">Zyada mat dekho aadat lag jaayegi</div>
+    </div>
   </div>
 
   <div id="denied">
@@ -700,6 +799,11 @@
       </button>
     </div>
   </div>
+
+
+
+  <!-- Audio Element for the reveal (no loop, ends at ~50s) -->
+  <audio id="reveal-music" src="song.mp3" preload="auto"></audio>
 
   <script type="importmap">
 {
@@ -1161,6 +1265,18 @@
     function startRevealSequence() {
       document.getElementById('vig').classList.add('visible');
 
+      // Play music 2 seconds late to sync perfectly with the sequence
+      const music = document.getElementById('reveal-music');
+      if (music) {
+        setTimeout(() => {
+          music.play().catch(e => console.log('Music play blocked:', e));
+          music.onended = endSequence;
+        }, 2000);
+        setTimeout(endSequence, 52000); // 50s + 2s fallback
+      } else {
+        setTimeout(endSequence, 52000);
+      }
+
       const m1 = document.querySelector('.msg .m1');
       const ml = document.querySelector('.msg .ml');
       const m2 = document.querySelector('.msg .m2');
@@ -1188,12 +1304,12 @@
           }
           sp.classList.add('visible');
 
-          // Zoom out and Typewriter Final Scene after 6s
+          // Zoom out and Typewriter Final Scene after 3s
           setTimeout(() => {
             runFinalTypewriterReveal();
-          }, 6000);
-        }, 1500);
-      }, 2200);
+          }, 3000);
+        }, 1000);
+      }, 1200);
     }
 
     function typeText(element, text, speed = 60) {
@@ -1222,23 +1338,56 @@
       const wrapper = document.getElementById('video-frame-wrapper');
       wrapper.classList.add('framed');
 
-      // Wait 2s for zoom transition to finish
-      await new Promise(r => setTimeout(r, 2000));
+      // Wait 1.2s for zoom transition to finish
+      await new Promise(r => setTimeout(r, 1200));
 
       // 3. Dialogues typing sequence
       const l1 = document.getElementById('line-1');
       const l2 = document.getElementById('line-2');
       const l3 = document.getElementById('line-3');
 
-      await typeText(l1, "you know what else is beautiful?");
-      await new Promise(r => setTimeout(r, 1200));
+      await typeText(l1, "you know what else is pretty?", 40);
+      await new Promise(r => setTimeout(r, 600));
 
-      await typeText(l2, "what?");
-      await new Promise(r => setTimeout(r, 1200));
+      await typeText(l2, "what?", 40);
+      await new Promise(r => setTimeout(r, 400));
+      l2.classList.add('glow-rtl');
+      await new Promise(r => setTimeout(r, 1400));
 
-      // Add pulse glow when "this." is typed
       wrapper.classList.add('pulse-glow');
-      await typeText(l3, "this.");
+      l3.classList.add('glow-persist');
+      await typeText(l3, "you.", 40);
+
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    function endSequence() {
+      const wrapper = document.getElementById('video-frame-wrapper');
+      if (wrapper) {
+        wrapper.classList.remove('pulse-glow');
+        wrapper.classList.add('turn-off');
+      }
+
+      // Stop video stream after animation finishes
+      setTimeout(() => {
+        const video = document.getElementById('cam-video');
+        if (video && video.srcObject) {
+          video.srcObject.getTracks().forEach(t => t.stop());
+        }
+      }, 1500);
+
+      const l1 = document.getElementById('line-1');
+      const l2 = document.getElementById('line-2');
+      const l3 = document.getElementById('line-3');
+
+      if (l1) l1.innerHTML = '';
+      if (l2) l2.innerHTML = '';
+      if (l3) l3.innerHTML = '';
+
+      setTimeout(() => {
+        const fm = document.getElementById('final-message');
+        if (fm) fm.classList.add('show');
+      }, 1000);
     }
 
     document.getElementById('scan-btn').addEventListener('click', async () => {
@@ -1248,6 +1397,10 @@
       btn.style.opacity = '0.5';
       btn.style.pointerEvents = 'none';
       ldr.classList.add('show');
+
+      // Just load music to unlock context in strict browsers
+      const music = document.getElementById('reveal-music');
+      if (music) music.load();
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -1292,6 +1445,10 @@
     document.getElementById('simulate-btn').addEventListener('click', () => {
       // Hide fallback screen
       document.getElementById('denied').classList.remove('visible');
+
+      // Just load music to unlock context in strict browsers
+      const music = document.getElementById('reveal-music');
+      if (music) music.load();
 
       // Lock scroll completely
       document.documentElement.style.overflow = 'hidden';
