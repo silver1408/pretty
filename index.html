@@ -452,9 +452,11 @@
     }
 
     .glow-rtl {
+      display: inline-block;
       background: linear-gradient(to left, var(--gold-light) 20%, #ffffff 50%, var(--gold-light) 80%);
       background-size: 200% auto;
       color: transparent;
+      -webkit-text-fill-color: transparent;
       -webkit-background-clip: text;
       background-clip: text;
       animation: text-sweep-glow 1.5s ease-in-out forwards;
@@ -1352,11 +1354,13 @@
       await typeText(l2, "what?", 40);
       await new Promise(r => setTimeout(r, 400));
       l2.classList.add('glow-rtl');
-      await new Promise(r => setTimeout(r, 1400));
+      // Wait exactly 8.6s (9s total delay after 'what?') to hit the song sync
+      await new Promise(r => setTimeout(r, 8600));
 
       wrapper.classList.add('pulse-glow');
       l3.classList.add('glow-persist');
-      await typeText(l3, "you.", 40);
+      // Slow down the typing speed of "you." to 250ms per character
+      await typeText(l3, "you.", 250);
 
       await new Promise(r => setTimeout(r, 3000));
     }
